@@ -103,6 +103,7 @@ function evaluate_basis_functions(b::BSplineBasis, u::Real)
     evaluate_basis_functions(b, u, i)
 end
 
+
 function plot(b::BSplineBasis, num::Integer=100, show_legend::Bool=false)
 
     p = b.order
@@ -125,3 +126,13 @@ function plot(b::BSplineBasis, num::Integer=100, show_legend::Bool=false)
     end
     plot(x, N, xaxis="knots", label=labels, legend=show_legend)
 end
+
+# %%
+struct BSplineCurve{S <: Real, T <: AbstractArray{S, 2}} <: AbstractArray{S, 2}
+    basis::BSplineBasis
+    control_points::T
+end
+
+Base.length(c::BSplineCurve) = length(c.basis)
+Base.size(c::BSplineCurve) = (length(c.basis),)
+Base.getindex(c::BSplineCurve, i) = c.basis.knot_vector[i]
