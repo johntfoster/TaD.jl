@@ -14,5 +14,6 @@
 module TaD
 
 include("trajectory.jl")
+include("bspline.jl")
 
 end # module

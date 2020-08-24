@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import Plots: plot
+import Plots: plot, plot!, plot3d
 
 # %%
 #
@@ -128,7 +128,7 @@ function plot(b::BSplineBasis, num::Integer=100, show_legend::Bool=false)
 end
 
 # %%
-struct BSplineCurve{S <: Real, T <: AbstractArray{S, 2}} <: AbstractArray{S, 2}
+struct BSplineCurve{S <: Real, T <: AbstractArray{S, 2}} <: AbstractVector{S}
     basis::BSplineBasis
     control_points::T
 end
@@ -136,3 +136,43 @@ end
 Base.length(c::BSplineCurve) = length(c.basis)
 Base.size(c::BSplineCurve) = (length(c.basis),)
 Base.getindex(c::BSplineCurve, i) = c.basis.knot_vector[i]
+
+function plot(c::BSplineCurve, num::Integer=100, control_net::Bool=false)
+
+    p = c.basis.order
+
+    start = c.basis.knot_vector[1]
+    stop = c.basis.knot_vector[end - p]
+
+    x = LinRange(start, stop, num)
+
+    curve = zeros(Float64, (length(x), size(c.control_points)[2]))
+
+    for (j, u) in enumerate(x)
+        i = find_knot_span(c.basis, u)
+        curve[j, :] = sum(evaluate_basis_functions(c.basis, u, i) .* c.control_points[(i-p):i, :], dims=1)
+    end
+
+    if size(curve)[2] == 2
+        plot(curve[:, 1], curve[:, 2], label = "B-Spline Curve")
+        plot!(c.control_points[:, 1], c.control_points[:, 2], label = "Control Net")
+        plot!(c.control_points[:, 1], c.control_points[:, 2], seriestype=:scatter, label = "Control Points")
+    elseif size(curve)[2] == 3
+        plot3d(curve[:, 1], curve[:, 2], curve[:, 2], label = "B-Spline Curve")
+        plot!(c.control_points[:, 1], c.control_points[:, 2], c.control_points[:, 3], label = "Control Net")
+        plot!(c.control_points[:, 1], c.control_points[:, 2], c.control_points[:, 3], seriestype=:scatter, label = "Control Points")
+    end
+end
+
+# %%
+kv = [0, 0, 0, 0.5, 1, 1, 1]
+control_points = [0 0 0; 0.25 0.5 0.25; 0.75 0.5 0.25; 1.0 0 0]
+p = 2;
+
+b = BSplineBasis(kv, p);
+c = BSplineCurve(b, control_points);
+
+#plot(c, control_net=false)
+
+
+
