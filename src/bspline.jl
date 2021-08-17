@@ -11,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import RecipesBase: @recipe, @series
+using RecipesBase
 
 # %%
-#
 function augment_knot_vector(knot_vector::AbstractVector, p::Integer)
 
     number_of_knots = length(knot_vector) + 2 * p
@@ -37,7 +36,7 @@ struct BSplineBasis{R <: Real, S <: AbstractVector{R}, T <: Integer} <: Abstract
     knot_vector::S
     order::T
     derivative_order::T
-    function BSplineBasis(knot_vector::AbstractVector{<:Real}, p::Integer, k::Integer=0) where {T}
+    function BSplineBasis(knot_vector::AbstractVector{<:Real}, p::Integer; k::Integer=0)
         if (all(knot_vector[1:(p+1)] .== knot_vector[1]) &&
             all(knot_vector[(end - p):end] .== knot_vector[end]))
             new{eltype(knot_vector), typeof(knot_vector), typeof(p)}(knot_vector, p, k)
@@ -47,13 +46,13 @@ struct BSplineBasis{R <: Real, S <: AbstractVector{R}, T <: Integer} <: Abstract
     end
 end
 
-BSplineBasis(knot_range::UnitRange{<:Integer}, p::Integer, k::Integer=0) = BSplineBasis(collect(knot_range), p, k)
+BSplineBasis(knot_range::UnitRange{<:Integer}, p::Integer; k::Integer=0) = BSplineBasis(collect(knot_range), p, k)
 
 Base.length(b::BSplineBasis) = length(b.knot_vector)
 Base.size(b::BSplineBasis) = (length(b),)
 Base.getindex(b::BSplineBasis, i) = b.knot_vector[i]
 
-derivative(b::BSplineBasis) = BSplineBasis(b.knot_vector, b.order, b.derivative_order + 1)
+derivative(b::BSplineBasis) = BSplineBasis(b.knot_vector, b.order, k=b.derivative_order + 1)
 
 # %%
 function find_knot_span(b::BSplineBasis, u::Real)
@@ -158,6 +157,14 @@ function evaluate(b::BSplineBasis, u::Real)
     evaluate(b, u, i)
 end
 
+function (b::BSplineBasis)(u::Real, i::Integer)
+    evaluate(b, u, i)
+end
+
+function (b::BSplineBasis)(u::Real)
+    evaluate(b, u)
+end
+
 
 # %%
 function default_range(b::BSplineBasis, num::Integer=100)
@@ -168,15 +175,15 @@ function default_range(b::BSplineBasis, num::Integer=100)
 end
 
 
-@recipe function f(b::BSplineBasis, x=default_range(b); basis_function_index=nothing)
+@recipe function f(b::BSplineBasis, x=default_range(b); k=0, i=nothing)
 
     xguide --> "Knots"
 
     p = b.order
-    k = b.derivative_order
+    @assert k ≤ b.derivative_order
     number_of_basis_functions = length(b.knot_vector) - p - 1
 
-    if basis_function_index == nothing
+    if i === nothing
         bfi = 1:number_of_basis_functions
     else
         bfi = basis_function_index
@@ -186,25 +193,45 @@ end
 
     for (j, u) in enumerate(x)
         i = find_knot_span(b, u)
-        N[j, (i-p):i] = evaluate(b, u, i)[k+1, :]
+        N[j, (i-p):i] = b(u, i)[k+1, :]
     end
 
     x, N[:, bfi]
 end
 
 
-
 # %%
 struct BSplineCurve{S <: Real, T <: AbstractArray{S, 2}} <: AbstractVector{S}
     basis::BSplineBasis
     control_points::T
+    # TODO: Add assertion that the number of basis functions and control points
+    # are equal.  This will require a default constructor definition.
 end
 
 Base.length(c::BSplineCurve) = length(c.basis)
 Base.size(c::BSplineCurve) = (length(c.basis),)
 Base.getindex(c::BSplineCurve, i) = c.basis.knot_vector[i]
 
-@recipe function f(c::BSplineCurve)
+function evaluate(c::BSplineCurve, u::Real, i::Integer)
+    b = evaluate(c.basis, u, i)
+    b * c.control_points[(i-c.basis.order+1):i, :]
+end
+
+function evaluate(c::BSplineCurve, u::Real)
+    i = find_knot_span(c.basis, u)
+    b = evaluate(c.basis, u, i)
+    b * c.control_points[(i-c.basis.order+1):i, :]
+end
+
+function (c::BSplineCurve)(u::Real, i::Integer)
+    evaluate(c, u, i)
+end
+
+function (c::BSplineCurve)(u::Real)
+    evaluate(c, u)
+end
+
+@recipe function f(c::BSplineCurve, i::Integer=1; control_net=false)
     x = default_range(c.basis)
     curve = zeros(Float64, (length(x), size(c.control_points)[2]))
 
@@ -219,24 +246,26 @@ Base.getindex(c::BSplineCurve, i) = c.basis.knot_vector[i]
         tuple(eachcol(c.control_points)...)
     end
 
+
     for (j, u) in enumerate(x)
-        i = find_knot_span(c.basis, u)
-        curve[j, :] = sum(evaluate(c.basis, u, i)[1, :] .* c.control_points[(i-p):i, :], dims=1)
+        curve[j, :] = c(u)[i, :] 
     end
 
     tuple(eachcol(curve)...)
 end
 
+export BSplineBasis, BSplineCurve
+
+
 
 # %%
 # using Plots
-# kv = [0, 0, 0, 1, 1, 1.]
-# control_points = [0 0 0; 0.5 1.0 0.25; 1.0 0 0]
-# p = 2;
+# kv = [0, 0, 0, 0, 1, 1, 1, 1]
+# control_points = [0 0 0; 0.5 0.25 0.25; 0.5 0.75 0.25; 1.0 0 0]
+# p = 3;
 
 # b = BSplineBasis(kv, p)
-# plot(b)
-# plot(derivative(b))
-
+# # plot(b)
+# # plot(derivative(b))
 # c = BSplineCurve(b, control_points)
 # plot(c)
