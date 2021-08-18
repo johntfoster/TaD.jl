@@ -146,7 +146,7 @@ function evaluate(b::BSplineBasis, u::Real, knot_span_index::Integer)
         for j in 0:p
             derivatives[k+1, j+1] *= r
         end
-        r *= (p + 1 - k)
+        r *= (p  - k)
     end
 
     return derivatives
@@ -214,13 +214,13 @@ Base.getindex(c::BSplineCurve, i) = c.basis.knot_vector[i]
 
 function evaluate(c::BSplineCurve, u::Real, i::Integer)
     b = evaluate(c.basis, u, i)
-    b * c.control_points[(i-c.basis.order+1):i, :]
+    b * c.control_points[(i-c.basis.order):i, :]
 end
 
 function evaluate(c::BSplineCurve, u::Real)
     i = find_knot_span(c.basis, u)
     b = evaluate(c.basis, u, i)
-    b * c.control_points[(i-c.basis.order+1):i, :]
+    b * c.control_points[(i-c.basis.order):i, :]
 end
 
 function (c::BSplineCurve)(u::Real, i::Integer)
@@ -237,14 +237,14 @@ end
 
     label --> ""
 
-    @series begin
-        seriestype := :path 
-        primary := false
-        linecolor := :lightgray
-        markercolor := :red
-        markershape := :circle
-        tuple(eachcol(c.control_points)...)
-    end
+    # @series begin
+        # seriestype := :path 
+        # primary := false
+        # linecolor := :lightgray
+        # markercolor := :red
+        # markershape := :circle
+        # tuple(eachcol(c.control_points)...)
+    # end
 
 
     for (j, u) in enumerate(x)
