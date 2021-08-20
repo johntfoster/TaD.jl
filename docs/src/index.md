@@ -12,6 +12,7 @@ CurrentModule = TaD
 ```
 
 ```@docs
+BSplineBasis
 soft_string_drag!
 ```
 

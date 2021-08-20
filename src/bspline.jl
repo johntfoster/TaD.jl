@@ -1,4 +1,4 @@
-# Copyright 2020 John T. Foster
+# Copyright 2020-2021 John T. Foster
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,6 +32,13 @@ function augment_knot_vector(knot_vector::AbstractVector, p::Integer)
     open_knot_vector
 end
 
+"""
+    BSplineBasis(knot_vector, order[, derivative_order])
+
+Creates a B-Spline basis given a knot vector and order.  If the optional 
+`derivative_order` order is specified, then evaluation of the basis function
+will also evaluate the derivatives up to that order.
+"""
 struct BSplineBasis{R <: Real, S <: AbstractVector{R}, T <: Integer} <: AbstractVector{R}
     knot_vector::S
     order::T
