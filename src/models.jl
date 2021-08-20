@@ -1,4 +1,4 @@
-# Copyright 2020 John T. Foster
+# Copyright 2020-2021 John T. Foster
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,14 +42,13 @@ function soft_string_drag(dF,F,p,s)
   dF[1] =  -w_dp * t̂[3] + μ * wₛ
 end
 
-function stiff_string_drag(dF,F,p,s)
+function stiff_string_drag!(dF,F,p,s)
   Fₜ, Fₙ, F_b = F
-  μf, E, rₒ , rᵢ, g, ρₛ, ρₘ, c = p
+  μ, E, rₒ , rᵢ, g, ρₛ, ρₘ, c = p
 
   EI = E * π * (rₒ ^ 4 - rᵢ ^ 4) / 64
   w_dp = π / 4 * (rₒ ^ 2 - rᵢ ^ 2)  * g * (ρₛ- ρₘ)
 
-  μ = μf(s)
   curves = c(s)
 
   r⃗′    = curves[2,:]
@@ -63,14 +62,16 @@ function stiff_string_drag(dF,F,p,s)
   κ = norm(r⃗′ × r⃗′′) / norm(r⃗′) ^ 3
   τ = r⃗′ ⋅ (r⃗′′ × r⃗′′′) / norm(r⃗′ × r⃗′′) ^ 2
 
-  c⃗′′′ = (r⃗′′′ * norm(r⃗′) ^ 3 / 
-          ((r⃗′ ⋅ r⃗′) * (r⃗′ ⋅ r⃗′′′ + r⃗′′ ⋅ r⃗′′) - (r⃗′ ⋅ r⃗′′) ^ 2))
-  κ′ = c⃗′′′ ⋅ n̂
+  # c⃗′′′ = (r⃗′′′ * norm(r⃗′) ^ 3 / 
+          # ((r⃗′ ⋅ r⃗′) * (r⃗′ ⋅ r⃗′′′ + r⃗′′ ⋅ r⃗′′) - (r⃗′ ⋅ r⃗′′) ^ 2))
+  # κ′ = c⃗′′′ ⋅ n̂
 
     
-  a = Fₙ+ EI * κ′
-  b = -F_b - EI * κ * τ
-  wₛ = sqrt(a ^ 2 + b ^ 2) / μ / rₒ
+  # a = Fₙ+ EI * κ′
+  # b = -F_b - EI * κ * τ
+  a = Fₜ * κ + w_dp * n̂[3]
+  b = w_dp * b̂[3]
+  wₛ = sqrt(a ^ 2 + b ^ 2) # / μ / rₒ
   θ = atan(b, a)
     
   dF[1] =  κ * Fₙ - w_dp * t̂[3] + μ * wₛ
@@ -78,7 +79,7 @@ function stiff_string_drag(dF,F,p,s)
   dF[3] =  τ * Fₙ - w_dp * b̂[3] + wₛ * sin(θ) 
 end
 
-export stiff_string_drag, soft_string_drag
+export stiff_string_drag!, soft_string_drag
 
 # %%
 #
