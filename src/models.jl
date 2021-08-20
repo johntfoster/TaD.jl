@@ -18,7 +18,52 @@ using LinearAlgebra
     soft_string_drag(dF, F, p, s)
 
 Defines the soft string ordinary differential equation for the axial force in
-a drillstring while tripping in/out of a well.
+a drillstring while tripping in/out of a well, i.e.
+
+\$\\frac{dF_t}{ds} = -w_{bp} \\hat{t}_3 + \\mu w_c,\$
+
+where
+
+\$w_{bp} = A g (\\rho_p - \\rho_m),\$
+
+and
+
+\$w_c = \\sqrt{\\left(F_t \\kappa + w_{bp} \\hat{n}_3\\right)^2 + \\left(w_{bp} \\hat{b}_3 \\right)^2}.\$
+
+\$\\hat{t}, \\hat{n}, \\hat{b}\$ are the tangential, normal, and bi-normal vectors 
+in the Frenet frame that follows the drillstring trajectory.  From the position 
+vector along trajectory curve defined by the B-Splines \$\\vec{r} = \\vec{r}(s)\$ 
+these are defined as
+
+\$\\hat{t} = \\frac{\\vec{r}^\\prime}{\\left\\Vert \\vec{r}^\\prime \\right\\Vert},\$
+
+\$\\hat{b} = \\frac{\\vec{r}^{\\prime\\prime}}{\\left\\Vert \\vec{r}^{\\prime\\prime} \\right\\Vert},\$
+
+\$\\hat{n} = \\hat{t} \\times \\hat{b},\$
+
+and finally, \$\\kappa\$ is the curvature defined by
+
+\$\\kappa = \\frac{\\left\\Vert \\vec{r}^{\\prime} \\times \\vec{r}^{\\prime\\prime} \\right\\Vert}{\\left\\Vert \\vec{r}^\\prime \\right\\Vert^3}\$.
+
+\$\\mu\$ is the friction factor, \$\\rho_p\$ and \$\\rho_m\$ are the densities of the 
+drill pipe and drilling mud respectively, \$A\$ is the cross-sectional area of 
+the pipe, and \$g\$ is acceration due to gravity.
+
+# Arguments
+- `p::Vector{<:Number}`: Vector that defines the parameters of the problem.  
+  Must be in the following order:
+
+  p = [μ, rₒ, rᵢ, g, ρₛ, ρₘ, c]
+
+  where
+
+  μ - friction factor
+  rₒ - outer radius of drill pipe
+  rᵢ - inner radius of drill pipe
+  g - acceleration due to gravity
+  ρₛ - density of drill pipe
+  ρₘ - density of drilling mud
+  c - `BSplineCurve` that defines the wellbore trajectory
 """
 function soft_string_drag(dF,F,p,s)
   Fₜ, = F
