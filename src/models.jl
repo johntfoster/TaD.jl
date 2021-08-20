@@ -38,11 +38,12 @@ end
 
 function stiff_string_drag(dF,F,p,s)
   Fₜ, Fₙ, F_b = F
-  μ, E, rₒ , rᵢ, g, ρₛ, ρₘ, c = p
+  μf, E, rₒ , rᵢ, g, ρₛ, ρₘ, c = p
 
   EI = E * π * (rₒ ^ 4 - rᵢ ^ 4) / 64
   w_dp = π / 4 * (rₒ ^ 2 - rᵢ ^ 2)  * g * (ρₛ- ρₘ)
-    
+
+  μ = μf(s)
   curves = c(s)
 
   r⃗′    = curves[2,:]
@@ -67,8 +68,8 @@ function stiff_string_drag(dF,F,p,s)
   θ = atan(b, a)
     
   dF[1] =  κ * Fₙ - w_dp * t̂[3] + μ * wₛ
-  dF[2] = -κ * Fₜ - w_dp * b̂[3] - wₛ * cos(θ) - F_b * τ
-  dF[3] =  τ * Fₙ - w_dp * n̂[3] + wₛ * sin(θ) 
+  dF[2] = -κ * Fₜ - w_dp * n̂[3] - wₛ * cos(θ) - F_b * τ
+  dF[3] =  τ * Fₙ - w_dp * b̂[3] + wₛ * sin(θ) 
 end
 
 export stiff_string_drag, soft_string_drag
