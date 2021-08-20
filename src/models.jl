@@ -15,7 +15,7 @@ import DifferentialEquations: ODEProblem, solve
 using LinearAlgebra
 
 """
-    soft_string_drag(dF, F, p, s)
+    soft_string_drag!(dF, F, p, s)
 
 Defines the soft string ordinary differential equation for the axial force in
 a drillstring while tripping in/out of a well, i.e.
@@ -57,15 +57,15 @@ the pipe, and \$g\$ is acceration due to gravity.
 
   where
 
-  μ - friction factor
-  rₒ - outer radius of drill pipe
-  rᵢ - inner radius of drill pipe
-  g - acceleration due to gravity
-  ρₛ - density of drill pipe
-  ρₘ - density of drilling mud
+  μ - friction factor  
+  rₒ - outer radius of drill pipe  
+  rᵢ - inner radius of drill pipe  
+  g - acceleration due to gravity  
+  ρₛ - density of drill pipe  
+  ρₘ - density of drilling mud  
   c - `BSplineCurve` that defines the wellbore trajectory
 """
-function soft_string_drag(dF,F,p,s)
+function soft_string_drag!(dF,F,p,s)
   Fₜ, = F
   μ, rₒ, rᵢ, g, ρₛ, ρₘ, c = p
 
