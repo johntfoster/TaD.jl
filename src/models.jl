@@ -14,6 +14,12 @@
 import DifferentialEquations: ODEProblem, solve
 using LinearAlgebra
 
+"""
+    soft_string_drag(dF, F, p, s)
+
+Defines the soft string ordinary differential equation for the axial force in
+a drillstring while tripping in/out of a well.
+"""
 function soft_string_drag(dF,F,p,s)
   Fₜ, = F
   μ, rₒ, rᵢ, g, ρₛ, ρₘ, c = p
