@@ -124,7 +124,7 @@ function stiff_string_drag!(dF,F,p,s)
   dF[3] =  τ * Fₙ - w_dp * b̂[3] + wₛ * sin(θ) 
 end
 
-export stiff_string_drag!, soft_string_drag
+export stiff_string_drag!, soft_string_drag!
 
 # %%
 #

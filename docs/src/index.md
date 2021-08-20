@@ -12,7 +12,7 @@ CurrentModule = TaD
 ```
 
 ```@docs
-soft_string_drag
+soft_string_drag!
 ```
 
 ## Index
