@@ -13,11 +13,16 @@
 # limitations under the License.
 
 # %%
+
+include("bspline.jl")
+using LinearAlgebra
+export reconstruct_trajectory_1d, reconstruct_trajectory_3d, generate_helix_test_tangents
+
 function generate_helix_test_tangents(r::Real=1, c::Real=1, number_of_points::Integer=100)
     t = LinRange(0, 100, number_of_points)
     dx = -r .* sin.(t) 
     dy = r .* cos.(t)
-    dz = c  
+    dz = c
     arr = zeros(Float64, (length(t), 3))
     arr[:, 1] = dx
     arr[:, 2] = dy
@@ -37,12 +42,43 @@ function create_knot_vector(number_of_data_points::Integer,
         α = j * d - i
         kv[j + p] = (1 - α) * ū[i - 1] + α * ū[i]
     end
+    kv[end-4:end] .= 1
     kv
 end
 
-function predict(control_points::Array{<:AbstractFloat,2})
+function reconstruct_trajectory_3d(tangents::Matrix{<:Float64}, number_of_control_points::Integer=(length(tangents) ÷ 2))
 
+  arr = zeros(Float64, (size(tangents, 1), size(tangents, 2)))
+  for i in 1:1:size(arr,2)
+    control_points, arr[:,i] = reconstruct_trajectory_1d(tangents[:,i])
+  end
+  plot((arr[:,1], arr[:,2], arr[:,3]))
+end
+function reconstruct_trajectory_1d(tangents::Vector{<:Float64}, number_of_control_points::Integer=(length(tangents) ÷ 2))
+  
+  kv = create_knot_vector(length(tangents), number_of_control_points)
+  knot_space_samples = 0:1/(length(tangents)-1):1
+  basis = BSplineBasis(kv, 3, k=1)
+  N, Nprime = construct_spline_matrix(basis, collect(knot_space_samples), length(kv)) #From create_knot_vector, data points / 2 = num control points
+  A = pinv(Nprime' * Nprime)
+  B = (Nprime' * tangents)
+  control_points, curve = A*B, N*(A*B)
 end
 
+function construct_spline_matrix(basis::BSplineBasis, samples::Vector{<:Float64}, num_knots::Integer)
+
+  rows, cols = length(samples), num_knots
+  N, Nprime = zeros(Float64, (rows, cols)), zeros(Float64, (rows, cols))
+  for i in 1:1:rows-1
+    evals = basis(samples[i])
+    N[i,find_knot_span(basis, samples[i])-2:find_knot_span(basis, samples[i])+1] =evals[1,:] #Find knot span returns lower bound of knot span
+    Nprime[i,find_knot_span(basis, samples[i])-2:find_knot_span(basis, samples[i])+1] = evals[2,:]
+  end
+  N, Nprime
+end
+
+
+function predict(x)
+end
 function loss(x)
 end
