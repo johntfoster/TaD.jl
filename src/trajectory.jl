@@ -15,7 +15,7 @@
 # %%
 
 include("bspline.jl")
-using LinearAlgebra
+using LinearAlgebra, Plots
 export reconstruct_trajectory_1d, reconstruct_trajectory_3d, generate_helix_test_tangents
 
 function generate_helix_test_tangents(r::Real=1, c::Real=1, number_of_points::Integer=100)
@@ -26,7 +26,7 @@ function generate_helix_test_tangents(r::Real=1, c::Real=1, number_of_points::In
     arr = zeros(Float64, (length(t), 3))
     arr[:, 1] = dx
     arr[:, 2] = dy
-    arr[:, 3] .= dz
+    arr[:, 3] = c*t
     arr
 end
 
@@ -47,31 +47,29 @@ function create_knot_vector(number_of_data_points::Integer,
 end
 
 function reconstruct_trajectory_3d(tangents::Matrix{<:Float64}, number_of_control_points::Integer=(length(tangents) ÷ 2))
-
-  arr = zeros(Float64, (size(tangents, 1), size(tangents, 2)))
-  for i in 1:1:size(arr,2)
+  arr = tangents
+  for i in 1:1:2
     control_points, arr[:,i] = reconstruct_trajectory_1d(tangents[:,i])
   end
-  plot((arr[:,1], arr[:,2], arr[:,3]))
+  fig = plot((arr[:,1], arr[:,2], arr[:,3]))
+  savefig(fig, joinpath(@__DIR__, "../examples/reconstructed_helix.png"))
 end
 function reconstruct_trajectory_1d(tangents::Vector{<:Float64}, number_of_control_points::Integer=(length(tangents) ÷ 2))
-  
   kv = create_knot_vector(length(tangents), number_of_control_points)
   knot_space_samples = 0:1/(length(tangents)-1):1
   basis = BSplineBasis(kv, 3, k=1)
-  N, Nprime = construct_spline_matrix(basis, collect(knot_space_samples), length(kv)) #From create_knot_vector, data points / 2 = num control points
+  N, Nprime = construct_spline_matrix(basis, collect(knot_space_samples), length(kv))
   A = pinv(Nprime' * Nprime)
   B = (Nprime' * tangents)
-  control_points, curve = A*B, N*(A*B)
+  control_points, curve = A*B, Nprime*(A*B)
 end
 
 function construct_spline_matrix(basis::BSplineBasis, samples::Vector{<:Float64}, num_knots::Integer)
-
   rows, cols = length(samples), num_knots
   N, Nprime = zeros(Float64, (rows, cols)), zeros(Float64, (rows, cols))
   for i in 1:1:rows-1
     evals = basis(samples[i])
-    N[i,find_knot_span(basis, samples[i])-2:find_knot_span(basis, samples[i])+1] =evals[1,:] #Find knot span returns lower bound of knot span
+    N[i,find_knot_span(basis, samples[i])-2:find_knot_span(basis, samples[i])+1] =evals[1,:]
     Nprime[i,find_knot_span(basis, samples[i])-2:find_knot_span(basis, samples[i])+1] = evals[2,:]
   end
   N, Nprime
