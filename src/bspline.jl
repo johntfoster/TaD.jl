@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# %%
 # Copyright 2020-2021 John T. Foster
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +32,17 @@ function augment_knot_vector(knot_vector::AbstractVector, p::Integer)
         end
     end
     open_knot_vector
+end
+
+function create_ūk(Qk::Vector{<:Float64})
+    """
+    According to chord length method defined on pg 364
+    """
+    Qk_shift = copy(Qk)
+    popfirst!(Qk_shift)
+    pop!(Qk)
+    ūk = cumsum(broadcast(abs, Qk_shift - Qk)) / sum(broadcast(abs, Qk_shift - Qk))
+    ūk
 end
 
 """
@@ -227,6 +240,7 @@ end
 function evaluate(c::BSplineCurve, u::Real)
     i = find_knot_span(c.basis, u)
     b = evaluate(c.basis, u, i)
+    #b[1,:]' * c.control_points[(i-c.basis.order):i, :]
     b * c.control_points[(i-c.basis.order):i, :]
 end
 
@@ -238,8 +252,15 @@ function (c::BSplineCurve)(u::Real)
     evaluate(c, u)
 end
 
+function default_range(c::BSplineCurve, num::Integer=100)
+    p = c.basis.order
+    start = c.control_points[1]
+    stop = c.control_points[end - p - 1]
+    LinRange(start, stop, num)
+end
+
 @recipe function f(c::BSplineCurve, i::Integer=1; control_net=false)
-    x = default_range(c.basis)
+    x = default_range(c)
     curve = zeros(Float64, (length(x), size(c.control_points)[2]))
 
     label --> ""
@@ -261,7 +282,7 @@ end
     tuple(eachcol(curve)...)
 end
 
-export BSplineBasis, BSplineCurve
+export BSplineBasis, BSplineCurve, find_knot_span
 
 
 
