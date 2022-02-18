@@ -253,9 +253,13 @@ function (c::BSplineCurve)(u::Real)
 end
 
 function default_range(c::BSplineCurve, num::Integer=100)
+    """
+    Defines a linear range between first and last control point. 
+    Note that this assumes independent axis is first column.
+    """
     p = c.basis.order
-    start = c.control_points[1]
-    stop = c.control_points[end - p - 1]
+    start = c.control_points[2, 3]
+    stop = c.control_points[end  - p - 1, 3]
     LinRange(start, stop, num)
 end
 
@@ -278,7 +282,7 @@ end
     for (j, u) in enumerate(x)
         curve[j, :] = c(u)[i, :] 
     end
-
+    
     tuple(eachcol(curve)...)
 end
 
