@@ -34,15 +34,17 @@ function augment_knot_vector(knot_vector::AbstractVector, p::Integer)
     open_knot_vector
 end
 
-function create_ūk(Qk::Vector{<:Float64})
+function create_ūk(Qk::Vector{<:Float64})#, p::Integer = 3, num_samples::Integer = length(Qk) - p - 1) # n = m - p - 1, p = 3 
     """
     According to chord length method defined on pg 364
     """
+    Qk_copy = copy(Qk)
     Qk_shift = copy(Qk)
     popfirst!(Qk_shift)
-    pop!(Qk)
-    ūk = cumsum(broadcast(abs, Qk_shift - Qk)) / sum(broadcast(abs, Qk_shift - Qk))
-    ūk
+    pop!(Qk_copy)
+    ūk = cumsum(broadcast(abs, Qk_shift - Qk_copy)) / sum(broadcast(abs, Qk_shift - Qk_copy))
+    insert!(ūk, 1, 0)
+    return ūk
 end
 
 """
@@ -234,6 +236,7 @@ Base.getindex(c::BSplineCurve, i) = c.basis.knot_vector[i]
 
 function evaluate(c::BSplineCurve, u::Real, i::Integer)
     b = evaluate(c.basis, u, i)
+    #b[1,:]' * c.control_points[(i-c.basis.order):i, :]
     b * c.control_points[(i-c.basis.order):i, :]
 end
 
@@ -263,22 +266,10 @@ function default_range(c::BSplineCurve, num::Integer=100)
     LinRange(start, stop, num)
 end
 
-@recipe function f(c::BSplineCurve, i::Integer=1; control_net=false)
+@recipe function f(c::BSplineCurve, i::Integer=1; control_net=false, label="")
     x = default_range(c)
     curve = zeros(Float64, (length(x), size(c.control_points)[2]))
-
     label --> ""
-
-    # @series begin
-        # seriestype := :path 
-        # primary := false
-        # linecolor := :lightgray
-        # markercolor := :red
-        # markershape := :circle
-        # tuple(eachcol(c.control_points)...)
-    # end
-
-
     for (j, u) in enumerate(x)
         curve[j, :] = c(u)[i, :] 
     end
@@ -287,17 +278,3 @@ end
 end
 
 export BSplineBasis, BSplineCurve, find_knot_span
-
-
-
-# %%
-# using Plots
-# kv = [0, 0, 0, 0, 1, 1, 1, 1]
-# control_points = [0 0 0; 0.5 0.25 0.25; 0.5 0.75 0.25; 1.0 0 0]
-# p = 3;
-
-# b = BSplineBasis(kv, p)
-# # plot(b)
-# # plot(derivative(b))
-# c = BSplineCurve(b, control_points)
-# plot(c)
