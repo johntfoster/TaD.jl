@@ -19,23 +19,6 @@ include("bspline.jl")
 using LinearAlgebra, Plots, IterativeSolvers
 export main, construct_spline_matrix, reconstruct_trajectory, construct_helix 
 
-function return_zero_rows(A)
-    row_zeros = map(is_row_zero, eachrow(A)) .*  collect(1:1:length(A[1,:]))
-    row_zeros = row_zeros[row_zeros .> 0]
-    return row_zeros
-end
-
-function is_row_zero(A)
-    if length(findall(x -> x != 0, A)) == 0
-        return 1
-    end
-    return 0
-end
-
-function pow(x,y=2)
-    return x^y
-end
-
 function construct_helix(n::Integer = 100)
     """
     Helper function which outputs an nx3 array of form [cos.(x)' sin.(x)'  linspace(0,1,n+1)] 
