@@ -258,15 +258,23 @@ end
 function default_range(c::BSplineCurve, num::Integer=100)
     """
     Defines a linear range between first and last control point. 
-    Note that this assumes independent axis is first column.
+    Note this assumes independent axis is third column.
     """
-    p = c.basis.order
-    start = c.control_points[2, 3]
-    stop = c.control_points[end  - p - 1, 3]
+    start = c.control_points[1, 3]
+    stop = c.control_points[end, 3]
     LinRange(start, stop, num)
 end
 
-@recipe function f(c::BSplineCurve, i::Integer=1; control_net=false, label="")
+function evaluate(c::BSplineCurve, steps::Integer=100, derivative::Integer=1)
+    x = default_range(c, steps)
+    curve = zeros(Float64, (length(x), size(c.control_points)[2]))
+    for (j, u) in enumerate(x)
+        curve[j, :] = c(u)[derivative, :] 
+    end
+    curve
+end
+
+@recipe function f(c::BSplineCurve, i::Integer=1, steps::Integer=100; control_net=false, label="")
     x = default_range(c)
     curve = zeros(Float64, (length(x), size(c.control_points)[2]))
     label --> ""
@@ -277,4 +285,4 @@ end
     tuple(eachcol(curve)...)
 end
 
-export BSplineBasis, BSplineCurve, find_knot_span
+export BSplineBasis, BSplineCurve, find_knot_span, evaluate

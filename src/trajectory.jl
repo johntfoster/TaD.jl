@@ -17,7 +17,7 @@
 # %%
 include("bspline.jl")
 using LinearAlgebra, Plots, IterativeSolvers
-export main, construct_spline_matrix, reconstruct_trajectory, construct_helix 
+export main, construct_spline_matrix, reconstruct_trajectory, construct_helix, L2error
 
 function construct_helix(n::Integer = 100)
     """
@@ -63,7 +63,6 @@ function reconstruct_trajectory_1d(tangents::Vector{<:Float64}, number_of_contro
     ū = create_ūk(tangents) # n = m - p - 1
     basis = BSplineBasis(kv, 3, k=2)
     N, Nprime = construct_spline_matrix(basis, ū, length(kv), 3)
-    T = Nprime'*Nprime
     control_points = lsmr(N, tangents)
     return control_points
 end
@@ -84,9 +83,23 @@ function construct_spline_matrix(basis::BSplineBasis, samples::Vector{<:Float64}
     N, Nprime
 end
 
-function main()
-    Q = construct_helix(100)
-    Curve = reconstruct_trajectory(Q)
-    plot((Q[:,1], Q[:,2], Q[:,3]))
-    plot!(Curve)
+function L2error(C::BSplineCurve, tangents::Matrix{<:Float64})
+    """
+    Returns a vector with the cumulative sum of the L2 error for each dimension.
+    """
+    evals = evaluate(C, length(tangents[:,1]))
+    error = zeros(length(tangents[:,1]))
+    for (i, u) in enumerate(evals[:,3]')
+        print(u)
+        index = findall(x-> x>=u, tangents[:,3])[1] #Find index of tangents vec closest to z axis of our control point
+        error[i] = abs(tangents[index,2] - evals[i,2]) + abs(tangents[index,3] - evals[i,3])
+    end
+    return error
 end
+
+function main(n::Integer=100)
+    Q = construct_helix(n)
+    Curve = reconstruct_trajectory(Q)
+    Q, Curve
+end
+
