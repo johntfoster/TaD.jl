@@ -90,7 +90,6 @@ function L2error(C::BSplineCurve, tangents::Matrix{<:Float64})
     evals = evaluate(C, length(tangents[:,1]))
     error = zeros(length(tangents[:,1]))
     for (i, u) in enumerate(evals[:,3]')
-        print(u)
         index = findall(x-> x>=u, tangents[:,3])[1] #Find index of tangents vec closest to z axis of our control point
         error[i] = abs(tangents[index,2] - evals[i,2]) + abs(tangents[index,3] - evals[i,3])
     end
@@ -102,4 +101,3 @@ function main(n::Integer=100)
     Curve = reconstruct_trajectory(Q)
     Q, Curve
 end
-
