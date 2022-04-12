@@ -243,7 +243,6 @@ end
 function evaluate(c::BSplineCurve, u::Real)
     i = find_knot_span(c.basis, u)
     b = evaluate(c.basis, u, i)
-    #b[1,:]' * c.control_points[(i-c.basis.order):i, :]
     b * c.control_points[(i-c.basis.order):i, :]
 end
 

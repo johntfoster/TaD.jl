@@ -16,8 +16,8 @@
 
 # %%
 include("bspline.jl")
-using LinearAlgebra, Plots, IterativeSolvers
-export main, construct_spline_matrix, reconstruct_trajectory, construct_helix, L2error
+using LinearAlgebra, IterativeSolvers
+export construct_spline_matrix, reconstruct_trajectory, construct_helix, L2error
 
 function construct_helix(n::Integer = 100)
     """
@@ -47,27 +47,27 @@ end
 #From definition, m = n + p + 1
 #set m = length(tangents) so the linear algebra works out
 #then set n (num samples) = m - p - 1
-function reconstruct_trajectory(tangents::Matrix{<:Float64}, number_of_control_points::Integer=(length(tangents) ÷ 2))
+function reconstruct_trajectory(tangents::Matrix{<:Float64}, p::Integer=3)
     control_points = zeros(size(tangents))
-    control_points[:,1] = reconstruct_trajectory_1d(tangents[:,1])
-    control_points[:,2] = reconstruct_trajectory_1d(tangents[:,2])
+    control_points[:,1] = reconstruct_trajectory_1d(tangents[:,1], p)
+    control_points[:,2] = reconstruct_trajectory_1d(tangents[:,2], p)
     control_points[:,3] = tangents[:,3] #Don't reconstruct the domain
-    kv = create_knot_vector(tangents[:,1])
-    basis = BSplineBasis(kv, 3, k=2)
+    kv = create_knot_vector(tangents[:,1], p)
+    basis = BSplineBasis(kv, p, k=2)
     curve = BSplineCurve(basis, control_points)
     return curve
 end
 
-function reconstruct_trajectory_1d(tangents::Vector{<:Float64}, number_of_control_points::Integer=(length(tangents) ÷ 2))
-    kv = create_knot_vector(tangents)
+function reconstruct_trajectory_1d(tangents::Vector{<:Float64}, p::Integer=3)
+    kv = create_knot_vector(tangents, p)
     ū = create_ūk(tangents) # n = m - p - 1
-    basis = BSplineBasis(kv, 3, k=2)
-    N, Nprime = construct_spline_matrix(basis, ū, length(kv), 3)
+    basis = BSplineBasis(kv, p, k=2)
+    N, Nprime = construct_spline_matrix(basis, ū, length(kv), p)
     control_points = lsmr(N, tangents)
     return control_points
 end
 
-function construct_spline_matrix(basis::BSplineBasis, samples::Vector{<:Float64}, num_knots::Integer, p::Integer)
+function construct_spline_matrix(basis::BSplineBasis, samples::Vector{<:Float64}, num_knots::Integer, p::Integer=3)
     rows, cols = length(samples), num_knots - p - 1
     N, Nprime = zeros(Float64, (rows, cols)), zeros(Float64, (rows, cols))
     N[1, 1] = 1
@@ -96,8 +96,8 @@ function L2error(C::BSplineCurve, tangents::Matrix{<:Float64})
     return error
 end
 
-function main(n::Integer=100)
+function main(n::Integer=100, p::Integer=3)
     Q = construct_helix(n)
-    Curve = reconstruct_trajectory(Q)
+    Curve = reconstruct_trajectory(Q, p)
     Q, Curve
 end
