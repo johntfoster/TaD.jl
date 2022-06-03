@@ -16,10 +16,20 @@
 
 # %%
 include("bspline.jl")
-using LinearAlgebra, IterativeSolvers
-export construct_spline_matrix, reconstruct_trajectory, construct_helix, L2error
+using LinearAlgebra, IterativeSolvers, Plots
+export construct_spline_matrix, reconstruct_trajectory, construct_helix, L2error, main
 
-function construct_helix(n::Integer = 100)
+function construct_non_helix(n::Integer = 100)
+    t = LinRange(0, 4*π, n+1)
+    arr = zeros(Float64, (length(t), 3))
+    arr[:, 1] = t
+    arr[:, 2] = t
+    arr[:, 3] = LinRange(0, 1, n+1)
+    arr[:, 3] = LinRange(0, 1, n+1)
+    arr
+end
+
+function construct_helix_tangents(n::Integer = 100)
     """
     Helper function which outputs an nx3 array of form [cos.(x)' sin.(x)'  linspace(0,1,n+1)] 
     """
@@ -31,16 +41,37 @@ function construct_helix(n::Integer = 100)
     arr
 end
 
-function create_knot_vector(Qk::Vector{<:Float64}, p::Integer = 3)
+function construct_helix(n::Integer = 100)
+    """
+    Helper function which outputs an nx3 array of form [cos.(x)' sin.(x)'  linspace(0,1,n+1)] 
+    """
+    t = LinRange(0, 4*π, n+1)
+    arr = zeros(Float64, (length(t), 3))
+    arr[:, 1] = sin.(t)
+    arr[:, 2] = -cos.(t)
+    arr[:, 3] = LinRange(0, 1, n+1)
+    arr
+end
+
+function create_knot_vector(Qk::Matrix{<:Float64}, p::Integer = 3)
     ū = create_ūk(Qk)
-    n = length(ū)
-    m = length(ū) + p + 1
+    n = length(Qk[:,1])
+    m = n + p + 1
     kv = zeros(m)
-    for j = 2:(n - p)
+    for j = 2:(n - p + 1)
         kv[j+p] = sum(ū[j:(j+p-1)]) / float(p)
     end
     kv[(end - p):end] .= 1
     kv
+end
+
+function reconstruct_control_points(Q::Vector{<:Float64}, u::Vector{<:Float64}, p::Integer=3)
+    P = zeros(length(Q))
+    P[1] = 0
+    for i=2:length(Q)
+        P[i] = Q[i]*(u[i+p+1] - u[i+1])/p - P[i-1]
+    end
+    P
 end
 
 #Knots = m
@@ -48,23 +79,13 @@ end
 #set m = length(tangents) so the linear algebra works out
 #then set n (num samples) = m - p - 1
 function reconstruct_trajectory(tangents::Matrix{<:Float64}, p::Integer=3)
-    control_points = zeros(size(tangents))
-    control_points[:,1] = reconstruct_trajectory_1d(tangents[:,1], p)
-    control_points[:,2] = reconstruct_trajectory_1d(tangents[:,2], p)
-    control_points[:,3] = tangents[:,3] #Don't reconstruct the domain
-    kv = create_knot_vector(tangents[:,1], p)
-    basis = BSplineBasis(kv, p, k=2)
-    curve = BSplineCurve(basis, control_points)
-    return curve
-end
-
-function reconstruct_trajectory_1d(tangents::Vector{<:Float64}, p::Integer=3)
-    kv = create_knot_vector(tangents, p)
+    kv = create_knot_vector(tangents, p) #Knot vector U' must be constructed with p-1 since it is for the derivatives of our basis
     ū = create_ūk(tangents) # n = m - p - 1
     basis = BSplineBasis(kv, p, k=2)
     N, Nprime = construct_spline_matrix(basis, ū, length(kv), p)
-    control_points = lsmr(N, tangents)
-    return control_points
+    tangent_control_points = hcat(map(col -> lsmr(Nprime, col), eachcol(tangents))...)
+    curve = BSplineCurve(basis, tangent_control_points)
+    return curve
 end
 
 function construct_spline_matrix(basis::BSplineBasis, samples::Vector{<:Float64}, num_knots::Integer, p::Integer=3)
@@ -74,10 +95,10 @@ function construct_spline_matrix(basis::BSplineBasis, samples::Vector{<:Float64}
     N[end, end] = 1
     Nprime[1, 1] = 1
     Nprime[end, end] = 1
-    for i in p:rows
+    for i in 2:rows-1
         evals = basis(samples[i])
         column = find_knot_span(basis, samples[i])
-        N[i,column-p:column] = evals[1,:]#evals[1, :][evals[1, :] .> 0]
+        N[i,column-p:column] = evals[1,:]#evals[2, :][evals[2, :] .> 0]
         Nprime[i,column-p:column] = evals[2,:]#evals[2, :][evals[2, :] .> 0]
     end
     N, Nprime
@@ -98,6 +119,8 @@ end
 
 function main(n::Integer=100, p::Integer=3)
     Q = construct_helix(n)
+    T = construct_helix_tangents(n)
     Curve = reconstruct_trajectory(Q, p)
-    Q, Curve
+    plot(Curve, label="Reconstructed Curve")
+    plot!(tuple(eachcol(Q)...), label="Original Helix")
 end

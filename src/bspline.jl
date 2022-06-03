@@ -34,16 +34,17 @@ function augment_knot_vector(knot_vector::AbstractVector, p::Integer)
     open_knot_vector
 end
 
-function create_ūk(Qk::Vector{<:Float64})#, p::Integer = 3, num_samples::Integer = length(Qk) - p - 1) # n = m - p - 1, p = 3 
+function create_ūk(Qk::Matrix{<:Float64})#, p::Integer = 3, num_samples::Integer = length(Qk) - p - 1) # n = m - p - 1, p = 3 
     """
     According to chord length method defined on pg 364
     """
-    Qk_copy = copy(Qk)
-    Qk_shift = copy(Qk)
-    popfirst!(Qk_shift)
-    pop!(Qk_copy)
-    ūk = cumsum(broadcast(abs, Qk_shift - Qk_copy)) / sum(broadcast(abs, Qk_shift - Qk_copy))
-    insert!(ūk, 1, 0)
+    ūk = zeros(length(Qk[:,1]))
+    Qk_shift = Qk[2:end, :]
+    Qk = Qk[1:end-1, :]
+    for i=1:size(Qk,1)
+        ūk[i+1] = norm(Qk_shift[i,:] - Qk[i,:])
+    end
+    ūk = cumsum(broadcast(abs, ūk)) / sum(broadcast(abs, ūk))
     return ūk
 end
 
@@ -254,18 +255,8 @@ function (c::BSplineCurve)(u::Real)
     evaluate(c, u)
 end
 
-function default_range(c::BSplineCurve, num::Integer=100)
-    """
-    Defines a linear range between first and last control point. 
-    Note this assumes independent axis is third column.
-    """
-    start = c.control_points[1, 3]
-    stop = c.control_points[end, 3]
-    LinRange(start, stop, num)
-end
-
 function evaluate(c::BSplineCurve, steps::Integer=100, derivative::Integer=1)
-    x = default_range(c, steps)
+    x = default_range(c.basis, steps)
     curve = zeros(Float64, (length(x), size(c.control_points)[2]))
     for (j, u) in enumerate(x)
         curve[j, :] = c(u)[derivative, :] 
@@ -274,7 +265,7 @@ function evaluate(c::BSplineCurve, steps::Integer=100, derivative::Integer=1)
 end
 
 @recipe function f(c::BSplineCurve, i::Integer=1, steps::Integer=100; control_net=false, label="")
-    x = default_range(c)
+    x = default_range(c.basis, steps)
     curve = zeros(Float64, (length(x), size(c.control_points)[2]))
     label --> ""
     for (j, u) in enumerate(x)
