@@ -34,7 +34,7 @@ function augment_knot_vector(knot_vector::AbstractVector, p::Integer)
     open_knot_vector
 end
 
-function create_ūk(Qk::Matrix{<:Float64})#, p::Integer = 3, num_samples::Integer = length(Qk) - p - 1) # n = m - p - 1, p = 3 
+function create_ūk(Qk::Array{<:Float64})#, p::Integer = 3, num_samples::Integer = length(Qk) - p - 1) # n = m - p - 1, p = 3 
     """
     According to chord length method defined on pg 364
     """
@@ -244,7 +244,7 @@ end
 function evaluate(c::BSplineCurve, u::Real)
     i = find_knot_span(c.basis, u)
     b = evaluate(c.basis, u, i)
-    b * c.control_points[(i-c.basis.order):i, :]
+    b * c.control_points[(i-c.basis.order):i, :] #Note: We evaluate a curve along its knots, but multiply by control points.
 end
 
 function (c::BSplineCurve)(u::Real, i::Integer)
@@ -264,10 +264,10 @@ function evaluate(c::BSplineCurve, steps::Integer=100, derivative::Integer=1)
     curve
 end
 
-@recipe function f(c::BSplineCurve, i::Integer=1, steps::Integer=100; control_net=false, label="")
+@recipe function f(c::BSplineCurve, i::Integer=1, steps::Integer=100; control_net=false, label="BSpline Curve")
     x = default_range(c.basis, steps)
     curve = zeros(Float64, (length(x), size(c.control_points)[2]))
-    label --> ""
+    label --> label
     for (j, u) in enumerate(x)
         curve[j, :] = c(u)[i, :] 
     end
