@@ -78,15 +78,15 @@ end
 
 #From definition, m (Num Knots) = n (Num points) + p (Polynomial Degree) + 1
 function reconstruct_trajectory(tangents::Array{<:Real}, p::Integer=3)
-    kv = create_knot_vector(tangents, p)
-    ū = create_ūk(tangents) #len(ū) = n = length(tangents). For a drill string we will use different algorithm (30' space)
+    kv = create_knot_vector(tangents[:,3], p)
+    ū = create_ūk(tangents[:,3]) #len(ū) = n = length(tangents). For a drill string we will use different algorithm (30' space)
     basis = BSplineBasis(kv, p, k=2)
     Nprime = construct_spline_matrix(basis, ū, length(kv), p)
-    tangents[1,:] = [0. -1. 0.] #From Textbook
-    tangents[2,:] = (kv[p+1]/3)*tangents[1,:] #From Textbook
+    #tangents[1,:] = [0. -1. 0.] #From Textbook
+    #tangents[2,:] = (kv[p+1]/3)*tangents[1,:] #From Textbook
     #solver = (b)->gmres(Nprime'*Nprime, Nprime'*b)
     # Solve in least squared sense
-    solver = (b)->lsmr!(b, Nprime, b)
+    solver = (b)->lsmr(Nprime, b)
     Pi = hcat(map(solver, eachcol(tangents))...)
     Qi = reconstruct_control_points(Pi, kv)
     curve = BSplineCurve(basis, Qi)
