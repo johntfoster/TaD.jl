@@ -17,7 +17,7 @@
 # %%
 include("bspline.jl")
 using LinearAlgebra, IterativeSolvers, Plots
-export construct_spline_matrix, reconstruct_trajectory, construct_helix, L2error, main, construct_helix_tangents
+export construct_spline_matrix, reconstruct_trajectory, construct_helix, L2error, main, construct_helix_tangents, construct_non_helix
 
 function construct_non_helix(n::Integer = 100)
     t = LinRange(0, 4*π, n+1)
@@ -78,36 +78,27 @@ end
 
 #From definition, m (Num Knots) = n (Num points) + p (Polynomial Degree) + 1
 function reconstruct_trajectory(tangents::Array{<:Real}, p::Integer=3)
-    kv = create_knot_vector(tangents[:,3], p)
-    ū = create_ūk(tangents[:,3]) #len(ū) = n = length(tangents). For a drill string we will use different algorithm (30' space)
-    basis = BSplineBasis(kv, p, k=2)
-    Nprime = construct_spline_matrix(basis, ū, length(kv), p)
-    #tangents[1,:] = [0. -1. 0.] #From Textbook
-    #tangents[2,:] = (kv[p+1]/3)*tangents[1,:] #From Textbook
-    #solver = (b)->gmres(Nprime'*Nprime, Nprime'*b)
-    # Solve in least squared sense
-    solver = (b)->lsmr(Nprime, b)
-    Pi = hcat(map(solver, eachcol(tangents))...)
-    Qi = reconstruct_control_points(Pi, kv)
-    curve = BSplineCurve(basis, Qi)
+    kv = create_knot_vector(tangents, p) #Knot vector U' must be constructed with p-1 since it is for the derivatives of our basis
+    ū = create_ūk(tangents) # n = m - p - 1
+    basis = BSplineBasis(kv, p, k=3)
+    N = construct_spline_matrix(basis, ū, length(kv), p)
+    tangent_control_points = hcat(map(col -> lsmr(N, col), eachcol(tangents))...)
+    curve = BSplineCurve(basis, tangent_control_points)
     return curve
 end
 
 function construct_spline_matrix(basis::BSplineBasis, samples::Vector{<:Real}, num_knots::Integer, p::Integer=3)
     rows, cols = length(samples), num_knots - p - 1
     t = eltype(samples)
-    Nprime = zeros(t, (rows, cols))
-    Nprime[1, 1] = 1
-    Nprime[end, end] = 1
-    #Construct According to NURBS Book EX 9.1 Pg 368
-    ##Note: If you set Nprime = evals[1,:] and construct the final curve with (basis, Pi)
-    #this example will work.
+    N = zeros(t, (rows, cols))
+    N[1, 1] = 1
+    N[end, end] = 1
     for i in 2:rows-1
         evals = basis(samples[i])
         column = find_knot_span(basis, samples[i])
-        Nprime[i,column-p:column] = evals[2,:]#evals[2, :][evals[2, :] .> 0]
+        N[i,column-p:column] = evals[1,:]#evals[2, :][evals[2, :] .> 0]
     end
-    Nprime
+    N
 end
 
 function L2error(C::BSplineCurve, tangents::Array{<:Real})
@@ -124,9 +115,8 @@ function L2error(C::BSplineCurve, tangents::Array{<:Real})
 end
 
 function main(n::Integer=100, p::Integer=3)
-    Q = construct_helix(n) # Textbook Example: Float64.([0 0; 3 4; -1 4;-4 0;-4 -3])
-    T = construct_helix_tangents(n)
-    Curve = reconstruct_trajectory(T, p)
+    Q = construct_helix(n)#[0:.05:4 sin.(0:.05:4)]#construct_non_helix(n) # Textbook Example: 
+    Curve = reconstruct_trajectory(Q, p)
     plot(Curve, label="Bspline")
     plot!(tuple(eachcol(Q)...), label="Original Helix")
 end

@@ -1,6 +1,9 @@
 using Revise
+using TaD
 using Plots
 using LinearAlgebra, IterativeSolvers, Plots
+
+export validate_helix, validate_toy, asc
 
 function construct_z_matrix(s, h, u)
     Z = zeros(Float64, (length(s)-2, length(s)-2)) # Z = v1 to vn-1

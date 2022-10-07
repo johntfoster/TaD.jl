@@ -34,11 +34,18 @@ function augment_knot_vector(knot_vector::AbstractVector, p::Integer)
     open_knot_vector
 end
 
-function create_ūk(Qk::Vector{<:Float64})#, p::Integer = 3, num_samples::Integer = length(Qk) - p - 1) # n = m - p - 1, p = 3 
+function create_ūk(Qk::Matrix{<:Float64})#, p::Integer = 3, num_samples::Integer = length(Qk) - p - 1) # n = m - p - 1, p = 3 
     """
     Normalize between 0,1
     """
-    return Qk./Qk[end]
+    ūk = zeros(length(Qk[:,1]))
+    Qk_shift = Qk[2:end, :]
+    Qk = Qk[1:end-1, :]
+    for i=1:size(Qk,1)
+        ūk[i+1] = norm(Qk_shift[i,:] - Qk[i,:])
+    end
+    ūk = cumsum(broadcast(abs, ūk)) / sum(broadcast(abs, ūk))
+    return ūk
 end
 
 """
