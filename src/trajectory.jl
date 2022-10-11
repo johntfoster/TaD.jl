@@ -19,16 +19,6 @@ include("bspline.jl")
 using LinearAlgebra, IterativeSolvers, Plots
 export construct_spline_matrix, reconstruct_trajectory, construct_helix, L2error, main, construct_helix_tangents, construct_non_helix
 
-function construct_non_helix(n::Integer = 100)
-    t = LinRange(0, 4*π, n+1)
-    arr = zeros(Float64, (length(t), 3))
-    arr[:, 1] = t
-    arr[:, 2] = t
-    arr[:, 3] = LinRange(0, 1, n+1)
-    arr[:, 3] = LinRange(0, 1, n+1)
-    arr
-end
-
 function construct_helix_tangents(n::Integer = 100)
     """
     Helper function which outputs an nx3 array of form [cos.(x)' sin.(x)'  linspace(0,1,n+1)] 
@@ -37,7 +27,7 @@ function construct_helix_tangents(n::Integer = 100)
     arr = zeros(Float64, (length(t), 3))
     arr[:, 1] = cos.(t)
     arr[:, 2] = sin.(t)
-    arr[:, 3] = LinRange(0, 1, n+1)
+    arr[:, 3] = LinRange(0, 4*π, n+1)
     arr
 end
 
@@ -49,7 +39,7 @@ function construct_helix(n::Integer = 100)
     arr = zeros(Float64, (length(t), 3))
     arr[:, 1] = sin.(t)
     arr[:, 2] = -cos.(t)
-    arr[:, 3] = LinRange(0, 1, n+1)
+    arr[:, 3] = LinRange(0, 4*π, n+1)
     arr
 end
 
