@@ -21,4 +21,8 @@ using SafeTestsets
         include("test_bspline.jl")
     end
 
+    @safetestset "Trajectory Tests" begin
+        include("test_trajectory.jl")
+    end
+
 end
