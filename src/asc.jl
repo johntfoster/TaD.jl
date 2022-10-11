@@ -3,7 +3,7 @@ using TaD
 using Plots
 using LinearAlgebra, IterativeSolvers, Plots
 
-export validate_helix, validate_toy, asc
+export validate_helix, validate_toy, asc, asc_tangents, to_radian, helix_tangents
 
 function construct_z_matrix(s, h, u)
     Z = zeros(Float64, (length(s)-2, length(s)-2)) # Z = v1 to vn-1
@@ -65,7 +65,7 @@ function to_radian(θ)
 end
 
 
-function asc(MD, λ)
+function asc(MD, λ, init::Vector{Float64} = [])
     h = (MD[2]-MD[1])*ones(length(MD)-1) #Uniform
     u = 2*(h[2]+h[1])*ones(length(h)) #Uniform
     mapcolu = (col)->6*((col[3:end]- col[2:end-1]) - (col[2:end-1] - col[1:end-2]))./h[1:end-1]
@@ -77,11 +77,15 @@ function asc(MD, λ)
     E = cumsum(map(x->spline_element_approx(λ[:,1],z[:,1],h,x), 1:1:(length(MD)-1)))
     N = cumsum(map(x->spline_element_approx(λ[:,2],z[:,2],h,x), 1:1:(length(MD)-1)))
     TVD = cumsum(map(x->spline_element_approx(λ[:,3],z[:,3],h,x), 1:1:(length(MD)-1)))
-    pushfirst!(E, 0)
-    pushfirst!(N, 0)
-    TVD = TVD .+ MD[1]
-    pushfirst!(TVD, MD[1])
-    return tuple(N, E, TVD)
+    if length(init) > 0
+        E = E .+ init[1]
+        pushfirst!(E, init[1])
+        N = N .+ init[2]
+        pushfirst!(N, init[2])
+        TVD = TVD .+ MD[1]
+        pushfirst!(TVD, init[3])
+    end
+    return tuple(E, N, TVD)
 end
 
 function plot_results(asc, tangents)
@@ -104,40 +108,6 @@ function validate_helix()
     θ, ϕ = range(0,4*pi,length(s)), range(0, 4*pi,length(s))
     λ = helix_tangents(s, θ, ϕ)
     tup = asc(s, λ)
-    return (tup[1]./maximum(tup[1]), tup[2]./maximum(tup[2]), tup[3]), λ
+    return (tup[1], tup[2], s), λ
 end
 
-#plot(tuple(col1, col2, col3)...)
-#title!("Reconstruct")
-#savefig("reconstruct.png")
-#plot!(tuple(cos.(θ).*cos.(ϕ), -cos.(ϕ).*sin.(θ), sin.(ϕ))...)
-#s = collect(0:30:30000)[1:end-1] #1000 samples
-#λ = construct_tangents(s, θ, ϕ)
-#h = ones(length(s)-1) #Uniform
-#u = ones(length(h)-1) #Uniform
-#mapcolu = (col)->6*((col[3:end]- col[2:end-1]) + (col[2:end-1] - col[1:end-2]))./h
-#v = hcat(map(mapcolu, eachcol(λ))...)
-
-#Zmat = construct_z_matrix(s,h,u)
-#solver = (b)->gmres(Zmat, b)
-#z = hcat(map(solver, eachcol(v))...)
-## Z0 = Z1 - h0(z2-z1)/h1
-# Zn = Zn-1 - h0(zn-2-zn-1)/h1
-#map((col) -> pushfirst!(z[:,col], (z[1,col] - h[1]*(z[2,col] - z[1,col])/h[2])), [1;2;3])
-#map((col) -> append!(z[:,col], (z[end-1,col] - h[1]*(z[end-1,col] - z[end-2,col])/h[2])), [1;2;3])
-
-
-#col1 = map(x->spline_element_approx(λ[:,1],z[:,1],h,x), 1:1:length(s)-2)
-#col2 = map(x->spline_element_approx(λ[:,2],z[:,2],h,x), 1:1:length(s)-2)
-#col3 = map(x->spline_element_approx(λ[:,3],z[:,3],h,x), 1:1:length(s)-2)
-#plot(tuple(col2, col3, col1))
-#plotlyjs()
-#plot(tuple(col1, col2, col3)...)
-#title!("Reconstruct")
-#savefig("reconstruct.png")
-#plot!(tuple(cos.(θ).*cos.(ϕ), -cos.(ϕ).*sin.(θ), sin.(ϕ))...)
-#title!("Integral")
-#savefig("integral.png")
-#plot(tuple(λ[:,1], λ[:,2], λ[:,3])...)
-#title!("Tangents")
-#savefig("tangents.png")
