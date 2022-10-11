@@ -1,9 +1,6 @@
-using Revise
-using TaD
-using Plots
-using LinearAlgebra, IterativeSolvers, Plots
+using LinearAlgebra, IterativeSolvers
 
-export validate_helix, validate_toy, asc, asc_tangents, to_radian, helix_tangents
+export asc
 
 function construct_z_matrix(s, h, u)
     Z = zeros(Float64, (length(s)-2, length(s)-2)) # Z = v1 to vn-1
@@ -28,43 +25,6 @@ function spline_element_approx(λ, z, h, index)
     return T
 end
 
-function spline_element_function(x, s, λ, z, h, index)
-    A = λ[index]
-    B = (λ[index+1] - λ[index])/h[index] - (z[index+1]*h[index])/6 - (z[index]*h[index])/3
-    C = (z[index])/2
-    D = (z[index+1] - z[index])/6*h[index]
-    T(x) = A + B*(x - s[index]) + C*(x - s[index])^2 + D*(x - s[index])^3
-    return T(x)
-end
-
-function find_span(x, s)
-    return s[ s .> x][1]
-end
-
-function helix_tangents(MD, θ, ϕ)
-    λ_E   = cos.(θ)
-    λ_N   = sin.(θ)
-    λ_TVD = (MD[2]-MD[1]).*ones(length(MD))#cos.(ϕ)
-    return [λ_E λ_N λ_TVD] #x y z
-end
-
-function asc_tangents(MD, θ, ϕ)
-    λ_E   = sin.(ϕ) .* sin.(θ)
-    λ_N   = sin.(ϕ) .* cos.(θ)
-    λ_TVD = cos.(ϕ)
-    return [λ_E λ_N λ_TVD] #x y z
-end
-
-function to_radian(θ)
-    #if  ((( (θ[end]) / π ) % .33333) == 0) | ((((θ[end]) / π) % .25) == 0)
-    if θ[end] > 22
-        return (2*π/360).*θ
-    else
-        return θ
-    end
-end
-
-
 function asc(MD, λ, init::Vector{Float64} = [])
     h = (MD[2]-MD[1])*ones(length(MD)-1) #Uniform
     u = 2*(h[2]+h[1])*ones(length(h)) #Uniform
@@ -87,27 +47,3 @@ function asc(MD, λ, init::Vector{Float64} = [])
     end
     return tuple(E, N, TVD)
 end
-
-function plot_results(asc, tangents)
-    plot(tuple(asc[1], asc[2], asc[3]), zaxis=(:flip))
-    plot!(tuple(tangents[:,1], tangents[:,2], 1:1:length(tangents[:,1])))
-end
-
-function validate_toy()
-    MD = collect(5000:100:5900)
-    θ, ϕ = collect(0:5:45), collect(0:10:90)
-    θ = to_radian(θ)
-    ϕ = to_radian(ϕ)
-    λ = asc_tangents(MD, θ, ϕ)
-    tup = asc(MD, λ)
-    return tup, λ
-end
-
-function validate_helix()
-    s = collect(1:1:100)
-    θ, ϕ = range(0,4*pi,length(s)), range(0, 4*pi,length(s))
-    λ = helix_tangents(s, θ, ϕ)
-    tup = asc(s, λ)
-    return (tup[1], tup[2], s), λ
-end
-
