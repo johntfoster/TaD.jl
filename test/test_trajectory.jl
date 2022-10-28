@@ -14,7 +14,7 @@
 using Test
 using TaD
 using LinearAlgebra
-import TaD: evaluate, asc, reconstruct_trajectory
+import TaD: evaluate, asc, reconstruct_trajectory, fit_bspline
 
 @testset "reconstruct trajectory of helix in 3D" begin
     function helix(;Ω1::Tuple=(0.,4*π), Ω2::Tuple=(0.,4*π), n::Int64=100, α::Tuple=(1.,1.,1.))
@@ -30,7 +30,7 @@ import TaD: evaluate, asc, reconstruct_trajectory
     λ = helix(n=1000) #Helix Derivative
     Λ = helix(Ω1=(-π/2, 4*π-π/2), Ω2=(π/2, 4*π+π/2), n=1000, α=(1,-1,1)) # Original Helix
     tup = asc(λ[:,3], λ, [0.0,-1.,0.])
-    Curve = reconstruct_trajectory(hcat(tup[1], tup[2], λ[:,3]))
+    Curve = fit_bspline(hcat(tup[1], tup[2], λ[:,3]))
     @test norm(evaluate(Curve, length(λ[:,1])) - Λ) < .01
 end
 
@@ -41,11 +41,10 @@ end
         λ_TVD = cos.(ϕ)
         return [λ_E λ_N λ_TVD] #x y z
     end
-    MD = collect(5000:100:5900)
+    MD = collect(5000.:100.:5900.)
     θ, ϕ = (2π/360) .* collect(0:5:45), (2π/360) .* collect(0:10:90)
     λ = asc_tangents(MD, θ, ϕ)
-    tup = asc(MD, λ, [0., 0., 5000.])
-    Curve = reconstruct_trajectory(hcat(tup...))
+    Curve = reconstruct_trajectory(MD, λ, init=[0., 0., 5000.], p=3)
     N = [0.00 8.69 34.29 75.46 130.05 195.24 267.75 344.03 420.52 493.85]
     @test norm(evaluate(Curve, length(MD))[:,2] - N') < 1
 end
