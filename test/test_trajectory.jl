@@ -14,27 +14,49 @@
 using Test
 using TaD
 using LinearAlgebra
-import TaD: evaluate, asc, reconstruct_trajectory, fit_bspline
+import TaD: evaluate, asc, reconstruct_trajectory, fit_bspline, reconstruct_synthetic
 
-@testset "reconstruct trajectory of helix in 3D" begin
-    function helix(;Ω1::Tuple=(0.,4*π), Ω2::Tuple=(0.,4*π), n::Int64=100, α::Tuple=(1.,1.,1.))
-        """
-        Constructs nx3 Matrix [α1cos.(θ) α2sin.(θ), α3LinRange(Ω, n+1)]
-        """
-        arr = zeros(Float64, (n+1, 3))
-        arr[:, 1] = α[1]*cos.(LinRange(Ω1[1], Ω1[2], n+1))
-        arr[:, 2] = α[2]*sin.(LinRange(Ω2[1], Ω2[2], n+1))
-        arr[:, 3] = α[3]*LinRange(0, Ω1[2]-Ω1[1], n+1)
-        arr
-    end
-    λ = helix(n=1000) #Helix Derivative
-    Λ = helix(Ω1=(-π/2, 4*π-π/2), Ω2=(π/2, 4*π+π/2), n=1000, α=(1,-1,1)) # Original Helix
-    tup = asc(λ[:,3], λ, [0.0,-1.,0.])
-    Curve = fit_bspline(hcat(tup[1], tup[2], λ[:,3]))
-    @test norm(evaluate(Curve, length(λ[:,1])) - Λ) < .01
+@testset "Helix in 3D" begin
+    N = 1000
+    period=4π
+    dS = period / N
+    ζ, δ = 1, 1
+    helix(t) = [ζ*sin(t); δ*cos(t); t]
+    helix_ders(t) = [ζ*cos(t); -δ*sin(t); 1]
+    reconstruct, trajectory = reconstruct_synthetic(helix, helix_ders, N; period=period, method="ASC")
+    BsplineReconstruct = fit_bspline(reconstruct)
+    BsplineActual = fit_bspline(trajectory)
+    @test norm(evaluate(BsplineReconstruct, size(reconstruct, 1)) - evaluate(BsplineActual, size(reconstruct, 1)), Inf) < .1
 end
 
-@testset "Abughaban test data" begin
+@testset "Scaled Helix in 3D" begin
+    N = 1000
+    period=4π
+    dS = period / N
+    ζ, δ = 3, 2
+    helix(t) = [ζ*sin(t); δ*cos(t); t]
+    helix_ders(t) = [ζ*cos(t); -δ*sin(t); 1]
+    reconstruct, trajectory = reconstruct_synthetic(helix, helix_ders, N; period=period, method="ASC")
+    BsplineReconstruct = fit_bspline(reconstruct)
+    BsplineActual = fit_bspline(trajectory)
+    @test norm(evaluate(BsplineReconstruct, size(reconstruct, 1)) - evaluate(BsplineActual, size(reconstruct, 1)), Inf) < 1
+end
+
+@testset "Synthetic Trajectory" begin
+    N = 500
+    period= 1.0
+    dS = period / N
+    α, ζ, η, δ = 6000, 300, 80, 3000
+    synthetic(t) = [α * t^2; ζ * t * sin(η*t); δ*(2*t-t^2)]
+    synthetic_ders(t) = [2 * α * t; ζ*sin(η*t) + η*ζ*t*cos(η*t); δ*(2-2*t)]
+    reconstruct, trajectory = reconstruct_synthetic(synthetic, synthetic_ders, N; period=period, method="ASC")
+    trajectory = copy(hcat(synthetic.(LinRange(0,period, N))...)')
+    BsplineReconstruct = fit_bspline(reconstruct)
+    BsplineActual = fit_bspline(trajectory)
+    @test norm(evaluate(BsplineReconstruct, size(reconstruct, 1)) - evaluate(BsplineActual, size(reconstruct, 1)), Inf) < 30
+end
+
+@testset "Abughaban Sample Calculation" begin
     function asc_tangents(MD, θ, ϕ)
         λ_E   = sin.(ϕ) .* sin.(θ)
         λ_N   = sin.(ϕ) .* cos.(θ)
