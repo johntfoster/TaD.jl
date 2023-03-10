@@ -35,6 +35,10 @@ function asc_tangents(MD, θ, ϕ)
     return [λ_E λ_N λ_TVD] #x y z
 end
 
+function rk4(∇f, x, δ)
+    return (∇f.(x) + 4*∇f.(x.+δ/2) + ∇f.(x.+δ))*δ/6
+end
+
 function reconstruct_synthetic(f::Function, df::Function, N::Int64; period::Float64=1.0, method="ASC")
     dS = period / N
     del_arc_length(t) = t > 0 ? sqrt.(sum(df(t).^2)) : 0
