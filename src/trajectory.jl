@@ -39,11 +39,11 @@ function rk4(∇f, x, δ)
     return (∇f.(x) + 4*∇f.(x.+δ/2) + ∇f.(x.+δ))*δ/6
 end
 
-function reconstruct_synthetic(f::Function, df::Function, N::Int64; period::Float64=1.0, method="ASC")
+function reconstruct_synthetic(f::Function, df::Function, N::Int64; period::Float64=1.0, method="ASC", angle="radians")
     dS = period / N
     del_arc_length(t) = t > 0 ? sqrt.(sum(df(t).^2)) : 0
-    trajectory = copy(hcat(f.(LinRange(0,period,N))...)')
-    derivatives = hcat(df.(LinRange(0,period,N))...)'
+    trajectory = copy(hcat(f.(LinRange(dS,period,N))...)')
+    derivatives = hcat(df.(LinRange(dS,period,N))...)'
     φp = del_arc_length.(LinRange(dS,period,N)) #\varphi
     MD = cumsum(φp * dS)
     tangents = derivatives ./ φp
@@ -51,14 +51,12 @@ function reconstruct_synthetic(f::Function, df::Function, N::Int64; period::Floa
     ϕ = collect(map(t -> t < 1 ? acos(t) : acos(1), tangents[:,3]))
     λ = asc_tangents(MD, θ, ϕ)
     if method == "RK4"
-        rk4 = copy(hcat(f(0), hcat(cumsum(rk4(df, LinRange(dS,period-dS,N-1), dS))...) .+ f(0))')
-        return rk4
+        reconstruct = copy(hcat(f(0), hcat(cumsum(rk4(df, LinRange(dS,period-dS,N-1), dS))...) .+ f(0))')
+    elseif method == "MCM"
+        reconstruct = mcm(MD, θ, ϕ, f(0), angle=angle)
+    else
+        reconstruct = asc(MD, tangents, init=f(0))
     end
-    if method == "MCM"
-        rk4 = copy(hcat(f(0), hcat(cumsum(rk4(df, LinRange(dS,period-dS,N-1), dS))...) .+ f(0))')
-        return rk4
-    end
-    reconstruct = asc(MD, tangents, init=f(0))
     return reconstruct, trajectory
 end
 
@@ -110,14 +108,14 @@ function mcm_step(path)
     return [delew, delns, deltvd]
 end
 
-function mcm(MD, θ, ϕ, init=[0. 0. 0.], angle="degrees")
+function mcm(MD, θ, ϕ, init=[0.; 0.; 0.]; angle="degrees")
     λ = [MD θ ϕ]
     if angle == "radians"
-        traj = copy(hcat(collect(map(x->mcm_step(λ[x:x+1,:]), 1:1:size(λ,1)-1))...)')
+        traj = hcat(collect(map(x->mcm_step(λ[x:x+1,:]), 1:1:size(λ,1)-1))...)
     else
-        traj = copy(hcat(collect(map(x->mcm_step_degrees(λ[x:x+1,:]), 1:1:size(λ,1)-1))...)')
+        traj = hcat(collect(map(x->mcm_step_degrees(λ[x:x+1,:]), 1:1:size(λ,1)-1))...)
     end
-    trajectory = [init; traj]
+    trajectory = [init'; traj']
     trajectory = cumsum(trajectory, dims=1)
     return trajectory
 end
