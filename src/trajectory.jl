@@ -17,7 +17,7 @@
 # %%
 include("bspline.jl")
 using LinearAlgebra, IterativeSolvers
-export reconstruct_trajectory, create_knot_vector, asc, mcm, fit_bspline, error, printerror, reconstruct_synthetic
+export reconstruct_trajectory, create_knot_vector, asc, mcm, fit_bspline, error, printerror, reconstruct_synthetic, asc_tangents
 
 function error(orig, reconstruct)
     error = map((col)->norm(reconstruct[:,col]-orig[:,col], Inf), [1 2 3])
@@ -162,8 +162,10 @@ end
 function asc(MD, λ; init::Vector{<:AbstractFloat} = ones(0))
     h = calc_h(MD) 
     u = calc_u(h)
-    βi = hcat(map((col)->(λ[2:end,col]-λ[1:end-1,col])./h, [1; 2; 3])...)
-    v = hcat(map((col)->6*(βi[2:end,col]-βi[1:end-1,col]), [1;2;3])...)
+    #βi = hcat(map((col)->(λ[2:end,col]-λ[1:end-1,col])./h, [1; 2; 3])...)
+    #v = hcat(map((col)->6*(βi[2:end,col]-βi[1:end-1,col]), [1;2;3])...)
+    mapcolu = (col)->6*((col[3:end]- col[2:end-1]) - (col[2:end-1] - col[1:end-2]))./h[1:end-1]
+    v = hcat(map(mapcolu, eachcol(λ))...)
     Zmat = construct_z_matrix(MD,h,u)
     z = inv(Zmat'*Zmat)*Zmat'*v # Solve Az = v -> inv(Zmat'*Zmat)*Zmat'*v = z
     z = hcat(map((col) -> pushfirst!(z[:,col], (z[1,col] + h[1]*(z[1,col] - z[2,col])/h[2])), [1;2;3])...)
