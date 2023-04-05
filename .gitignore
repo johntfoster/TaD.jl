@@ -2,3 +2,7 @@
 /Manifest.toml
 /dev/
 docs/build
+examples/*.md
+*.sw*
+.ipynb_checkpoints/
+scratch/
