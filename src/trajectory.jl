@@ -198,7 +198,6 @@ function example_helix(N=1000, method="ASC"; δ=2, ζ=3)
     helix_ders(t) = [ζ*cos(t); -δ*sin(t); 1]
     reconstruct, trajectory = reconstruct_synthetic(helix, helix_ders, N; period=period, method=method)
     reconstruct = fit_bspline(reconstruct)
-    original = fit_bspline(trajectory)
-    return reconstruct, original
+    return reconstruct, trajectory
 end
 

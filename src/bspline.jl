@@ -244,7 +244,7 @@ end
 function evaluate(c::BSplineCurve, u::Real)
     i = find_knot_span(c.basis, u)
     b = evaluate(c.basis, u, i)
-    b * c.control_points[(i-c.basis.order):i, :] #Note: We evaluate a curve along its knots, but multiply by control points.
+    b * c.control_points[(i-c.basis.order):i, :]
 end
 
 function (c::BSplineCurve)(u::Real, i::Integer)
@@ -253,6 +253,29 @@ end
 
 function (c::BSplineCurve)(u::Real)
     evaluate(c, u)
+end
+
+function basis_integral(b::BSplineBasis)
+    ts = b.knot_vector
+    k = b.order
+    # The new basis has 2 more knots and 1 more B-spline.
+    t_int = similar(ts, length(ts) + 2)
+    t_int[(begin + 1):(end - 1)] .= ts
+    t_int[begin] = t_int[begin + 1]
+    t_int[end] = t_int[end - 1]
+    return BSplineBasis(t_int, k+1)
+end
+
+function integrate_spline(c::BSplineCurve)
+    β = similar(c.control_points, size(c.control_points,1) + 1, size(c.control_points,2))
+    t = c.basis.knot_vector
+    k = c.basis.order
+    β[1,:] .= zero(eltype(c.control_points[1]))
+    for j =1:size(c.control_points,1)
+        β[j + 1,:] = β[j,:] + c.control_points[j,:] .* (t[j + k] - t[j])/k
+    end
+    βn = basis_integral(c.basis)
+    return BSplineCurve(βn, β)
 end
 
 function evaluate(c::BSplineCurve, steps::Integer=100, derivative::Integer=1)
@@ -271,7 +294,6 @@ end
     for (j, u) in enumerate(x)
         curve[j, :] = c(u)[i, :] 
     end
-    
     tuple(eachcol(curve)...)
 end
 
