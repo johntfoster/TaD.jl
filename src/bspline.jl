@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# %%
 # Copyright 2020-2021 John T. Foster
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +32,20 @@ function augment_knot_vector(knot_vector::AbstractVector, p::Integer)
         end
     end
     open_knot_vector
+end
+
+function create_ūk(Qk::Matrix{<:Float64})#, p::Integer = 3, num_samples::Integer = length(Qk) - p - 1) # n = m - p - 1, p = 3 
+    """
+    Normalize between 0,1
+    """
+    ūk = zeros(length(Qk[:,1]))
+    Qk_shift = Qk[2:end, :]
+    Qk = Qk[1:end-1, :]
+    for i=1:size(Qk,1)
+        ūk[i+1] = norm(Qk_shift[i,:] - Qk[i,:])
+    end
+    ūk = cumsum(broadcast(abs, ūk)) / sum(broadcast(abs, ūk))
+    return ūk
 end
 
 """
@@ -221,6 +237,7 @@ Base.getindex(c::BSplineCurve, i) = c.basis.knot_vector[i]
 
 function evaluate(c::BSplineCurve, u::Real, i::Integer)
     b = evaluate(c.basis, u, i)
+    #b[1,:]' * c.control_points[(i-c.basis.order):i, :]
     b * c.control_points[(i-c.basis.order):i, :]
 end
 
@@ -238,41 +255,46 @@ function (c::BSplineCurve)(u::Real)
     evaluate(c, u)
 end
 
-@recipe function f(c::BSplineCurve, i::Integer=1; control_net=false)
-    x = default_range(c.basis)
+function basis_integral(b::BSplineBasis)
+    ts = b.knot_vector
+    k = b.order
+    # The new basis has 2 more knots and 1 more B-spline.
+    t_int = similar(ts, length(ts) + 2)
+    t_int[(begin + 1):(end - 1)] .= ts
+    t_int[begin] = t_int[begin + 1]
+    t_int[end] = t_int[end - 1]
+    return BSplineBasis(t_int, k+1)
+end
+
+function integrate_spline(c::BSplineCurve)
+    β = similar(c.control_points, size(c.control_points,1) + 1, size(c.control_points,2))
+    t = c.basis.knot_vector
+    k = c.basis.order
+    β[1,:] .= zero(eltype(c.control_points[1]))
+    for j =1:size(c.control_points,1)
+        β[j + 1,:] = β[j,:] + c.control_points[j,:] .* (t[j + k] - t[j])/k
+    end
+    βn = basis_integral(c.basis)
+    return BSplineCurve(βn, β)
+end
+
+function evaluate(c::BSplineCurve, steps::Integer=100, derivative::Integer=1)
+    x = default_range(c.basis, steps)
     curve = zeros(Float64, (length(x), size(c.control_points)[2]))
+    for (j, u) in enumerate(x)
+        curve[j, :] = c(u)[derivative, :] 
+    end
+    curve
+end
 
-    label --> ""
-
-    # @series begin
-        # seriestype := :path 
-        # primary := false
-        # linecolor := :lightgray
-        # markercolor := :red
-        # markershape := :circle
-        # tuple(eachcol(c.control_points)...)
-    # end
-
-
+@recipe function f(c::BSplineCurve, i::Integer=1, steps::Integer=100; control_net=false, label="BSpline Curve")
+    x = default_range(c.basis, steps)
+    curve = zeros(Float64, (length(x), size(c.control_points)[2]))
+    label --> label
     for (j, u) in enumerate(x)
         curve[j, :] = c(u)[i, :] 
     end
-
     tuple(eachcol(curve)...)
 end
 
-export BSplineBasis, BSplineCurve
-
-
-
-# %%
-# using Plots
-# kv = [0, 0, 0, 0, 1, 1, 1, 1]
-# control_points = [0 0 0; 0.5 0.25 0.25; 0.5 0.75 0.25; 1.0 0 0]
-# p = 3;
-
-# b = BSplineBasis(kv, p)
-# # plot(b)
-# # plot(derivative(b))
-# c = BSplineCurve(b, control_points)
-# plot(c)
+export BSplineBasis, BSplineCurve, find_knot_span, evaluate
